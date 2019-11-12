@@ -1,27 +1,55 @@
-const fs = require('fs')
-const request = require('request')
-const puppet = require('puppeteer')
+const fs = require("fs");
+const request = require("request");
+const puppet = require("puppeteer");
+(async () => {
+  console.log("launching puppet...");
+  const browser = await puppet.launch({
+    headless: false,
+    args: ["--proxy-server=localhost:3000", "--proxy-bypass-list=localhost"],
+    pipe: false
+  });
 
-function download(url, filename, cb) {
-	request.head(url, (e, res, body) => {
-		if (e) return e
-		console.log('download url: ', url)
-		request(url)
-			.pipe(fs.createWriteStream(filename))
-			.on('close', cb)
-	})
-}
-
-;(async () => {
-	console.log('launching puppet...')
-	const browser = await puppet.launch({ headless: true })
-	console.log('getting new page')
-	const page = await browser.newPage()
-	console.log('going to page...')
-	await page.goto('https://youtube.com/watch?v=EK32jo7i5LQ', {
-		waitUntil: 'networkidle2',
-	})
-	await page.waitFor('input[id=videourl')
+  console.log("getting new page");
+  const page = await browser.newPage();
+  await page.setViewport({
+    width: 720,
+    height: 480,
+    deviceScaleFactor: 1
+  });
+  console.log("going to page...");
+  await page.goto("localhost:3000", {
+    waitUntil: "load",
+    timeout: 0
+  });
+  await page.waitFor(".video-react-big-play-button");
+  await page.click(".video-react-big-play-button");
+  await page.waitFor(".video-react-play-control");
+  await page.click(".video-react-play-control");
+  for (let i = 10; i >= 1; i--) {
+    process.stdout.write("taking screens in ");
+    process.stdout.write(`${i}...`);
+  }
+  process.stdout.write("taking screenshots...");
+  await page.evaluate(() => {
+    document.querySelector(".video-react-control-bar").style.opacity = 0;
+  });
+  let snaps = 17 * 60 * 1000;
+  for (let i = 1; i <= snaps; i++) {
+    await page.click(".video-react-play-control"); // play
+    await page.waitForSelector(".video-react-loading-spinner", {
+      hidden: true
+    });
+    await page.waitFor(1000);
+    await page.click(".video-react-play-control"); // pause
+    process.stdout.write("snap! ");
+    await page.waitForSelector(".video-react-loading-spinner", {
+      hidden: true
+    });
+    await page.screenshot({
+      path: `screencaps/this-problem-seems-hard/screen${i}.png`
+    });
+  }
+  /*
 	await page.$eval(
 		'input[id=videourl]',
 		el => (el.value = 'https://www.youtube.com/watch?v=EK32jo7i5LQ'),
@@ -51,8 +79,9 @@ function download(url, filename, cb) {
 	console.log('png: ', png)
 	download(png, 'image.png', () => console.log('image downloaded'))
 	*/
-	await browser.close()
-})()
+  console.log("closing browser!");
+  await browser.close();
+})();
 /*
 - open video page
 - wait for pause button to show up?
