@@ -66,7 +66,7 @@ const puppet = require("puppeteer");
 
 			process.stdout.write(`snap ${time}/${duration} `);
 			await page.screenshot({
-				path: `screencaps/${time}.png`
+				path: `screencaps/${process.argv[3]}/${time}.png`
 			});
 
 			await page.waitForSelector(".video-react-loading-spinner", {
